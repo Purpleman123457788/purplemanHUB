@@ -1,0 +1,173 @@
+if game:GetService("CoreGui"):FindFirstChild("FixMenu_v3") then
+    game:GetService("CoreGui"):FindFirstChild("FixMenu_v3"):Destroy()
+end
+
+local CoreGui, Players, RunService, UIS = game:GetService("CoreGui"), game:GetService("Players"), game:GetService("RunService"), game:GetService("UserInputService")
+local player, camera = Players.LocalPlayer, workspace.CurrentCamera
+
+_G.FlySpeed, _G.WalkSpeed = 50, 50
+local isFlying, isSpeed, isInfJump, isNoclip, isEsp = false, false, false, false, false
+local flyConn, speedConn, infConn, clipConn
+
+-- Создание интерфейса
+local sg = Instance.new("ScreenGui", CoreGui) sg.Name = "FixMenu_v3"; sg.ResetOnSpawn = false
+local frame = Instance.new("Frame", sg) frame.Size = UDim2.new(0, 250, 0, 420) frame.Position = UDim2.new(0.1, 0, 0.2, 0) frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25) frame.Active = true frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel", frame) title.Size = UDim2.new(1, 0, 0.1, 0) title.BackgroundTransparency = 1 title.Text = "Ultimate Panel v3 [RShift]" title.TextColor3 = Color3.fromRGB(255, 255, 255) title.Font = Enum.Font.SourceSansBold title.TextSize = 16
+
+local function createRow(y, text, hasInput, default)
+    local btn = Instance.new("TextButton", frame) btn.Size = UDim2.new(hasInput and 0.6 or 0.9, 0, 0.09, 0) btn.Position = UDim2.new(0.05, 0, y, 0) btn.BackgroundColor3 = Color3.fromRGB(200, 60, 60) btn.Text = text btn.TextColor3 = Color3.fromRGB(255, 255, 255) btn.Font = Enum.Font.SourceSansBold btn.TextSize = 14
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local box
+    if hasInput then
+        box = Instance.new("TextBox", frame) box.Size = UDim2.new(0.25, 0, 0.09, 0) box.Position = UDim2.new(0.7, 0, y, 0) box.BackgroundColor3 = Color3.fromRGB(45, 45, 45) box.Text = tostring(default) box.TextColor3 = Color3.fromRGB(255, 255, 255) box.Font = Enum.Font.SourceSans box.TextSize = 14
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    end
+    return btn, box
+end
+
+local bFly, boxFly = createRow(0.12, "Fly: ВЫКЛ", true, _G.FlySpeed)
+local bSpeed, boxSpeed = createRow(0.23, "Speed: ВЫКЛ", true, _G.WalkSpeed)
+local bInf = createRow(0.34, "Infinite Jump: ВЫКЛ", false)
+local bClip = createRow(0.45, "Noclip: ВЫКЛ", false)
+local bEsp = createRow(0.56, "ESP: ВЫКЛ", false)
+
+local tpBox = Instance.new("TextBox", frame) tpBox.Size = UDim2.new(0.9, 0, 0.09, 0) tpBox.Position = UDim2.new(0.05, 0, 0.70, 0) tpBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45) tpBox.PlaceholderText = "Ник игрока..." tpBox.Text = "" tpBox.TextColor3 = Color3.fromRGB(255, 255, 255) tpBox.Font = Enum.Font.SourceSans tpBox.TextSize = 14 Instance.new("UICorner", tpBox).CornerRadius = UDim.new(0, 6)
+local bTp = Instance.new("TextButton", frame) bTp.Size = UDim2.new(0.9, 0, 0.09, 0) bTp.Position = UDim2.new(0.05, 0, 0.82, 0) bTp.BackgroundColor3 = Color3.fromRGB(50, 120, 180) bTp.Text = "Телепортироваться" bTp.TextColor3 = Color3.fromRGB(255, 255, 255) bTp.Font = Enum.Font.SourceSansBold bTp.TextSize = 14 Instance.new("UICorner", bTp).CornerRadius = UDim.new(0, 6)
+
+boxFly.FocusLost:Connect(function() _G.FlySpeed = tonumber(boxFly.Text) or _G.FlySpeed boxFly.Text = tostring(_G.FlySpeed) end)
+boxSpeed.FocusLost:Connect(function() _G.WalkSpeed = tonumber(boxSpeed.Text) or _G.WalkSpeed boxSpeed.Text = tostring(_G.WalkSpeed) end)
+
+-- Функции кнопок
+bFly.MouseButton1Click:Connect(function()
+    isFlying = not isFlying
+    bFly.Text = isFlying and "Fly: ВКЛ" or "Fly: ВЫКЛ"
+    bFly.BackgroundColor3 = isFlying and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 60, 60)
+    if isFlying then
+        flyConn = RunService.Heartbeat:Connect(function(dt)
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                local dir = Vector3.zero
+                if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + camera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - camera.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - camera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + camera.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+                if dir.Magnitude > 0 then hrp.CFrame = hrp.CFrame + (dir.Unit * _G.FlySpeed * dt) end
+            end
+        end)
+    elseif flyConn then flyConn:Disconnect() flyConn = nil end
+end)
+
+bSpeed.MouseButton1Click:Connect(function()
+    isSpeed = not isSpeed
+    bSpeed.Text = isSpeed and "Speed: ВКЛ" or "Speed: ВЫКЛ"
+    bSpeed.BackgroundColor3 = isSpeed and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 60, 60)
+    if isSpeed then
+        speedConn = RunService.Heartbeat:Connect(function()
+            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = _G.WalkSpeed end
+        end)
+    else
+        if speedConn then speedConn:Disconnect() speedConn = nil end
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end
+end)
+
+bInf.MouseButton1Click:Connect(function()
+    isInfJump = not isInfJump
+    bInf.Text = isInfJump and "Infinite Jump: ВКЛ" or "Infinite Jump: ВЫКЛ"
+    bInf.BackgroundColor3 = isInfJump and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 60, 60)
+    if isInfJump then
+        infConn = UIS.JumpRequest:Connect(function()
+            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end)
+    elseif infConn then infConn:Disconnect() infConn = nil end
+end)
+
+bClip.MouseButton1Click:Connect(function()
+    isNoclip = not isNoclip
+    bClip.Text = isNoclip and "Noclip: ВКЛ" or "Noclip: ВЫКЛ"
+    bClip.BackgroundColor3 = isNoclip and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 60, 60)
+    if isNoclip then
+        clipConn = RunService.Stepped:Connect(function()
+            if player.Character and isNoclip then
+                for _, p in pairs(player.Character:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if clipConn then clipConn:Disconnect() clipConn = nil end
+        if player.Character then
+            for _, p in pairs(player.Character:GetDescendants()) do
+                if p:IsA("BasePart") and (p.Name == "HumanoidRootPart" or p.Name:find("Torso") or p.Name == "Head") then p.CanCollide = true end
+            end
+        end
+    end
+end)
+
+-- Исправленный ESP (BoxHandleAdornment)
+local function createEsp(char)
+    if not char then return end
+    local hrp = char:WaitForChild("HumanoidRootPart", 5)
+    if not hrp then return end
+    if hrp:FindFirstChild("PanelESP") then hrp.PanelESP:Destroy() end
+    
+    local box = Instance.new("BoxHandleAdornment", hrp)
+    box.Name = "PanelESP"
+    box.Size = Vector3.new(4, 6, 4)
+    box.Color3 = Color3.fromRGB(255, 0, 0)
+    box.Transparency = 0.5
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Adornee = hrp
+    box.Visible = isEsp
+end
+
+bEsp.MouseButton1Click:Connect(function()
+    isEsp = not isEsp
+    bEsp.Text = isEsp and "ESP: ВКЛ" or "ESP: ВЫКЛ"
+    bEsp.BackgroundColor3 = isEsp and Color3.fromRGB(60, 180, 60) or Color3.fromRGB(200, 60, 60)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp:FindFirstChild("PanelESP") then hrp.PanelESP.Visible = isEsp end
+        end
+    end
+end)
+
+local function monitorPlayer(p)
+    if p ~= player then
+        if p.Character then createEsp(p.Character) end
+        p.CharacterAdded:Connect(createEsp)
+    end
+end
+for _, p in pairs(Players:GetPlayers()) do monitorPlayer(p) end
+Players.PlayerAdded:Connect(monitorPlayer)
+
+-- Исправленный Телепорт
+bTp.MouseButton1Click:Connect(function()
+    local text = tpBox.Text:lower()
+    if text == "" then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and (p.Name:lower():find(text) or p.DisplayName:lower():find(text)) then
+            local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            local targetHrp = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+            if myHrp and targetHrp then
+                myHrp.AssemblyLinearVelocity = Vector3.zero
+                myHrp.CFrame = targetHrp.CFrame + Vector3.new(0, 4, 0)
+                break
+            end
+        end
+    end
+end)
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.RightShift then frame.Visible = not frame.Visible end
+end)
