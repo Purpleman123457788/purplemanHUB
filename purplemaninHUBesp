@@ -1,0 +1,80 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Функция для создания подсветки
+local function createESP(player, color, roleName)
+    local character = player.Character
+    if not character then return end
+
+    -- Удаляем старую подсветку, если она есть
+    if character:FindFirstChild("RoleESP") then
+        character.RoleESP:Destroy()
+    end
+
+    -- Создаем визуальный контур (Highlight)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "RoleESP"
+    highlight.FillColor = color
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Adornee = character
+    highlight.Parent = character
+
+    -- Создаем 3D текст над головой
+    local head = character:FindFirstChild("Head")
+    if head and not head:FindFirstChild("RoleText") then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "RoleText"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = player.Name .. " (" .. roleName .. ")"
+        textLabel.TextColor3 = color
+        textLabel.TextSize = 14
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Parent = billboard
+    end
+end
+
+-- Функция очистки при смерти или смене роли
+local function removeESP(player)
+    if player.Character then
+        if player.Character:FindFirstChild("RoleESP") then
+            player.Character.RoleESP:Destroy()
+        end
+        local head = player.Character:FindFirstChild("Head")
+        if head and head:FindFirstChild("RoleText") then
+            head.RoleText:Destroy()
+        end
+    end
+end
+
+-- Главный цикл проверки ролей
+task.spawn(function()
+    while task.wait(1) do
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local backpack = p:FindFirstChild("Backpack")
+                local character = p.Character
+                
+                -- Ищем оружие в рюкзаке или в руках
+                local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or character:FindFirstChild("Knife")
+                local hasGun = (backpack and backpack:FindFirstChild("Gun")) or character:FindFirstChild("Gun")
+
+                if hasKnife then
+                    createESP(p, Color3.fromRGB(255, 0, 0), "Убийца") -- Красный
+                elseif hasGun then
+                    createESP(p, Color3.fromRGB(0, 0, 255), "Шериф") -- Синий
+                else
+                    removeESP(p) -- Обычный игрок (мирный)
+                end
+            end
+        end
+    end
+end)
